@@ -1,0 +1,14 @@
+Flask
+Werkzeug
+SQLAlchemy
+Flask-SQLAlchemy
+Flask-Migrate
+flask-marshmallow
+pytz
+requests
+
+marshmallow
+marshmallow-enum
+marshmallow-sqlalchemy
+
+Flask-Cors
