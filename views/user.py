@@ -1,3 +1,4 @@
+import os
 import uuid
 from flask import jsonify, request
 from app import app
@@ -6,6 +7,7 @@ from schemas.schema import UserSchema
 from werkzeug.security import generate_password_hash,check_password_hash
 import jwt
 from views.middleWare import token_required
+from views.otpGeneration import otpGenreationForUserMail
 
 
 @app.route("/signup",methods=['POST'])
@@ -21,10 +23,29 @@ def createUser():
                 ob.password=generate_password_hash(ob.password,method='sha256')
                 ob.save()
                 result = UserSchema().dump(ob)
+                otpGenreationForUserMail(result.data['email'])
                 return jsonify(result.data)
         except Exception as error:
             return jsonify({"error": str(error)}), 400
 
+@app.route("/verify",methods=['POST'])
+def verifyied():
+    try:
+        ob = request.json
+        user = User.query.filter_by(email=ob['email']).first()
+        setattr(user,'verifiedMail',True)
+        filePath = ob['email']+'.txt'
+        file2 = open(filePath, "r")
+        data=file2.read()
+        file2.close()
+        if data == ob['otp']:
+            user.update()
+            result = UserSchema().dump(user)
+            os.remove(filePath)
+            return jsonify({"data": result.data})
+        return jsonify({"error":"Otp does not match"})
+    except Exception as error:
+        return jsonify({"error": str(error)}), 400
 
 @app.route("/login",methods=['POST'])
 def loginUser():
@@ -34,11 +55,14 @@ def loginUser():
             data = User.query.filter_by(email=ob.username).first()
             res = UserSchema().dump(data)
             if data :
-                if check_password_hash(res.data['password'],ob.password):
-                    token=jwt.encode({"userId":res.data['uid'],"password":res.data['password']},key=app.config['SECRET_KEY'],algorithm='HS256')
-                    return jsonify({"data": True,"message":"User Exits","token":token})
+                if res.data['verifiedMail'] == False:
+                    return jsonify({"error":"Please Verify Your Mail"})
                 else:
-                    return jsonify({"data":False,"message":"Password Does Not match"})
+                    if check_password_hash(res.data['password'],ob.password):
+                        token=jwt.encode({"userId":res.data['uid'],"password":res.data['password']},key=app.config['SECRET_KEY'],algorithm='HS256')
+                        return jsonify({"data": True,"message":"User Exits","token":token})
+                    else:
+                        return jsonify({"data":False,"message":"Password Does Not match"})
             else:
                 return jsonify({"data":False,"message":"User Does Not Exits"})
         except Exception as error:
@@ -66,7 +90,7 @@ def user_by_id(current_user):
                         setattr(ob,key,password)
                     if key=="isAdmin":
                         setattr(ob,key,False)
-                    if key!="password" and key!="isAdmin":
+                    if key!="password" and key!="isAdmin" and key!="email" and key!="verifiedMail":
                         setattr(ob, key, request.json[key])
                 ob.update()
                 result = UserSchema().dump(ob)

@@ -3,6 +3,7 @@ from flask import jsonify,request
 from app import app
 from model.model import Notification
 from schemas.schema import NotificationSchema, UserSchema
+from views.mailForNotification import sendNotification
 from views.middleWare import token_required
 
 
@@ -17,6 +18,7 @@ def createNotification(current_user):
             ob.user = user.data['uid']
             ob.save()
             result = NotificationSchema().dump(ob)
+            sendNotification(user.data['email'],result.data['description'])
             return jsonify(result.data)
         except Exception as error:
             return jsonify({"error": str(error)}), 400

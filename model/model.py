@@ -14,6 +14,7 @@ class User(Base):
     kycStatus = db.Column(db.BOOLEAN)
     fcmToken = db.Column(db.String(80))
     isAdmin = db.Column(db.BOOLEAN,default=False)
+    verifiedMail = db.Column(db.BOOLEAN,default=False)
 
 class Order(Base):
     status = db.Column(db.String(80))
@@ -32,6 +33,6 @@ class Kyc(Base):
 
 class Notification(Base):
     description = db.Column(db.String(200))
-    sent_status = db.Column(db.BOOLEAN)
+    sent_status = db.Column(db.BOOLEAN,default=True)
     user = db.Column(UUID(as_uuid=True))
     orderRelated = db.Column(UUID(as_uuid=True), db.ForeignKey('user.uid'))
