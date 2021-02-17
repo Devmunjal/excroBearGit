@@ -23,3 +23,8 @@ class NotificationSchema(ma.ModelSchema):
 
     class Meta:
         model = Notification
+
+class OtpSchema(ma.ModelSchema):
+
+    class Meta:
+        model = Otp

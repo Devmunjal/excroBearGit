@@ -2,10 +2,12 @@ import os
 import uuid
 from flask import jsonify, request
 from app import app
-from model.model import User
-from schemas.schema import UserSchema
+from model.model import User,Otp
+from schemas.schema import UserSchema, OtpSchema
 from werkzeug.security import generate_password_hash,check_password_hash
 import jwt
+
+from views.mailForNotification import sendNotification
 from views.middleWare import token_required
 from views.otpGeneration import otpGenreationForUserMail
 
@@ -34,14 +36,11 @@ def verifyied():
         ob = request.json
         user = User.query.filter_by(email=ob['email']).first()
         setattr(user,'verifiedMail',True)
-        filePath = ob['email']+'.txt'
-        file2 = open(filePath, "r")
-        data=file2.read()
-        file2.close()
-        if data == ob['otp']:
+        data = Otp.query.filter_by(email=ob['email']).first()
+        res = OtpSchema().dump(data)
+        if res.data['otp'] == ob['otp']:
             user.update()
             result = UserSchema().dump(user)
-            os.remove(filePath)
             return jsonify({"data": result.data})
         return jsonify({"error":"Otp does not match"})
     except Exception as error:
@@ -62,12 +61,47 @@ def loginUser():
                         token=jwt.encode({"userId":res.data['uid'],"password":res.data['password']},key=app.config['SECRET_KEY'],algorithm='HS256')
                         return jsonify({"data": True,"message":"User Exits","token":token})
                     else:
-                        return jsonify({"data":False,"message":"Password Does Not match"})
+                        return jsonify({"error":True,"message":"Password Does Not match"})
             else:
-                return jsonify({"data":False,"message":"User Does Not Exits"})
+                return jsonify({"error":True,"message":"User Does Not Exits"})
         except Exception as error:
             return jsonify({"error": str(error)}), 400
 
+
+@app.route("/generateRefetchUrl",methods=['POST'])
+def GenerateRefetchUrl():
+    try:
+        ob = request.json
+        otp = Otp.query.filter_by(email=ob['email']).first()
+        if(otp):
+            setattr(otp, 'refecthUrl', ob['refetchUrl'])
+            setattr(otp,'linkused',False)
+            otp.update()
+            msg = ob['refetchUrl']+"You can reset your password by click on given link it is only for single use"
+            sendNotification(ob['email'],msg)
+            result = OtpSchema().dump(otp)
+            return jsonify(result.data)
+        return jsonify({"error":"You Have No Verified Account"})
+    except Exception as error:
+        return jsonify({"error": str(error)}), 400
+
+@app.route("/forgetPassword", methods=['POST'])
+def forgetPassword():
+    try:
+        ob = request.json
+        otp = Otp.query.filter_by(email=ob['email']).first()
+        user = User.query.filter_by(email=ob['email']).first()
+        if(otp.linkused!=True and otp.refecthUrl == ob['refetchUrl']):
+            setattr(otp, 'linkused', True)
+            setattr(user, 'password', generate_password_hash(ob['password'], method='sha256'))
+            user.update()
+            otp.update()
+            result = UserSchema().dump(user)
+            return jsonify(result.data)
+        else :
+            return jsonify({"error":"Forget Password Link Not Found 404"})
+    except Exception as error:
+        return jsonify({"error": str(error)}), 400
 
 @app.route("/user",methods=['GET','POST','DELETE'])
 @token_required

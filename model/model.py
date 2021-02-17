@@ -36,3 +36,9 @@ class Notification(Base):
     sent_status = db.Column(db.BOOLEAN,default=True)
     user = db.Column(UUID(as_uuid=True))
     orderRelated = db.Column(UUID(as_uuid=True), db.ForeignKey('user.uid'))
+
+class Otp(Base):
+    email = db.Column(db.String(200))
+    otp = db.Column(db.Integer)
+    refecthUrl = db.Column(db.String(200))
+    linkused = db.Column(db.BOOLEAN,default=False)

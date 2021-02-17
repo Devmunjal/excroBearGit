@@ -5,6 +5,5 @@ def sendNotification(mailid,msg):
     # print(mailid,msg)
     s = SMTP('smtp.gmail.com', 587)
     s.starttls()
-    s.login("emailId", "password")
-    print(msg)
-    s.sendmail('emailId',mailid,msg)
+    s.login("email", "password")
+    s.sendmail('email',mailid,msg)
